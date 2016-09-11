@@ -10,10 +10,12 @@ import (
 )
 
 func Hammer(url string, method string, header http.Header, body []byte, r int) {
-  f, err := os.Create("results.html")
+  f1, err := os.Create("graph.html")
+  checkError(err)
+  f2, err := os.Create("text.txt")
   checkError(err)
   rate := uint64(r) // per second
-  duration := 1 * time.Second
+  duration := 5 * time.Second
   targeter := vegeta.NewStaticTargeter(vegeta.Target{
     Method: method,
     URL:    url,
@@ -22,8 +24,11 @@ func Hammer(url string, method string, header http.Header, body []byte, r int) {
   })
   attacker := vegeta.NewAttacker()
 
-  w := bufio.NewWriter(f)
-  defer w.Flush()
+  w1 := bufio.NewWriter(f1)
+  defer w1.Flush()
+  w2 := bufio.NewWriter(f2)
+  defer w2.Flush()
+
   var metrics vegeta.Metrics
   var results vegeta.Results
 
@@ -37,8 +42,11 @@ for res := range attacker.Attack(targeter, rate, duration) {
   fmt.Printf("99th percentile: %s\n", metrics.Latencies.P99)
   fmt.Printf("Mean: %s\n", metrics.Latencies.Mean)
 
-  reporter := vegeta.NewPlotReporter("Results", &results)
-  reporter.Report(w)
+  graphReporter := vegeta.NewPlotReporter(url, &results)
+  graphReporter.Report(w1)
+  textReporter := vegeta.NewTextReporter(&metrics)
+  textReporter.Report(w2)
+  
 }
 
 func checkError(e error) {
@@ -47,3 +55,4 @@ func checkError(e error) {
     panic(e)
   }
 }
+
